@@ -1,24 +1,23 @@
-import {Component, OnInit} from '@angular/core';
+import {ChangeDetectionStrategy, Component, OnInit} from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
+
+import {Observable} from 'rxjs';
+import {map, shareReplay} from 'rxjs/operators';
+
 import {compareCourses, Course} from '../model/course';
-import {Observable} from "rxjs";
 import {defaultDialogConfig} from '../shared/default-dialog-config';
 import {EditCourseDialogComponent} from '../edit-course-dialog/edit-course-dialog.component';
-import { MatDialog } from '@angular/material/dialog';
-import {map, shareReplay} from 'rxjs/operators';
-import {CoursesHttpService} from '../services/courses-http.service';
-
-
+import { CourseEntityService } from '../services/course-entity.service';
 
 @Component({
     selector: 'home',
     templateUrl: './home.component.html',
-    styleUrls: ['./home.component.css']
+    styleUrls: ['./home.component.css'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class HomeComponent implements OnInit {
 
     promoTotal$: Observable<number>;
-
-    loading$: Observable<boolean>;
 
     beginnerCourses$: Observable<Course[]>;
 
@@ -27,37 +26,22 @@ export class HomeComponent implements OnInit {
 
     constructor(
       private dialog: MatDialog,
-      private coursesHttpService: CoursesHttpService) {
-
-    }
+      private coursesService: CourseEntityService) {}
 
     ngOnInit() {
       this.reload();
     }
 
   reload() {
-
-    const courses$ = this.coursesHttpService.findAllCourses()
-      .pipe(
-        map(courses => courses.sort(compareCourses)),
-        shareReplay()
+    this.beginnerCourses$ = this.coursesService.entities$.pipe(
+        map(courses => courses.filter(course => course.category === 'BEGINNER'))
       );
 
-    this.loading$ = courses$.pipe(map(courses => !!courses));
-
-    this.beginnerCourses$ = courses$
-      .pipe(
-        map(courses => courses.filter(course => course.category == 'BEGINNER'))
+    this.advancedCourses$ = this.coursesService.entities$.pipe(
+        map(courses => courses.filter(course => course.category === 'ADVANCED'))
       );
 
-
-    this.advancedCourses$ = courses$
-      .pipe(
-        map(courses => courses.filter(course => course.category == 'ADVANCED'))
-      );
-
-    this.promoTotal$ = courses$
-        .pipe(
+    this.promoTotal$ = this.coursesService.entities$.pipe(
             map(courses => courses.filter(course => course.promo).length)
         );
 
